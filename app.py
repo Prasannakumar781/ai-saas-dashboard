@@ -150,35 +150,12 @@ if datasets:
 
         st.success("Deleted ✔")
         st.rerun()
-
     # ---------------- CHART ----------------
     st.subheader("📊 Visualization")
 
     if df is not None and not df.empty:
         x = st.selectbox("X axis", df.columns, key="x_axis")
         y = st.selectbox("Y axis", df.columns, key="y_axis")
-
-        fig = px.bar(df, x=x, y=y)
-        st.plotly_chart(fig)
-    else:
-        st.warning("No datasets found")
-    # ---------------- CHART ----------------
-    st.subheader("📊 Visualization")
-
-    if df is not None and not df.empty:
-        x = st.selectbox("X axis", df.columns, key="x_axis")
-        y = st.selectbox("Y axis", df.columns, key="y_axis")
-
-        fig = px.bar(df, x=x, y=y)
-        st.plotly_chart(fig)
-    else:
-        st.warning("No datasets found")
-    # ---------------- CHART ----------------
-    st.subheader("📊 Visualization")
-
-    if not df.empty:
-        x = st.selectbox("X axis", df.columns)
-        y = st.selectbox("Y axis", df.columns)
 
         fig = px.bar(df, x=x, y=y)
         st.plotly_chart(fig)
