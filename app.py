@@ -21,45 +21,88 @@ if "user" not in st.session_state:
 
 st.sidebar.title("🔐 Account")
 
-# ================= AUTH =================
-def login_page():
+# ---------------- AUTH PAGE ----------------
+def auth_page():
     email = st.sidebar.text_input("Email")
     password = st.sidebar.text_input("Password", type="password")
 
     login = st.sidebar.button("Login")
     signup = st.sidebar.button("Sign Up")
 
+    # SIGN UP
     if signup:
-        supabase.auth.sign_up({"email": email, "password": password})
-        st.info("Check email to confirm account")
+        if not email or not password:
+            st.warning("Enter email and password")
+            return
 
+        try:
+            supabase.auth.sign_up({
+                "email": email,
+                "password": password
+            })
+            st.info("📩 Check your email to confirm your account before logging in")
+
+        except Exception as e:
+            st.error(f"Signup error: {e}")
+
+    # LOGIN
     if login:
-        res = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
+        if not email or not password:
+            st.warning("Enter email and password")
+            return
 
-        if res and res.user:
-            st.session_state.user = res.user
-            st.rerun()
+        try:
+            res = supabase.auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+
+            if res and res.user:
+                st.session_state.user = res.user
+                st.success("Login successful ✔")
+                st.rerun()
+
+        except Exception:
+            st.error("Login failed ❌ (check email confirmation or credentials)")
 
     st.warning("Please login to continue")
     st.stop()
 
-
-# 🔴 FORCE LOGIN FIRST (CRITICAL)
+# 🔴 FORCE LOGIN FIRST
 if st.session_state.user is None:
-    login_page()
+    auth_page()
 
-# ================= LOGGED IN AREA =================
+# ---------------- LOGGED IN AREA ----------------
 st.sidebar.success(f"Logged in as {st.session_state.user.email}")
 
 if st.sidebar.button("Logout"):
     st.session_state.user = None
     st.rerun()
 
-# ================= EVERYTHING BELOW IS PROTECTED =================
+# ---------------- AI FUNCTION ----------------
+def ask_ai(question, df):
+    sample = df.head(20).to_string()
 
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a senior data analyst."},
+            {
+                "role": "user",
+                "content": f"""
+Dataset:
+{sample}
+
+Question:
+{question}
+"""
+            }
+        ]
+    )
+
+    return response.choices[0].message.content
+
+# ---------------- UPLOAD DATA ----------------
 st.subheader("📁 Upload Dataset")
 
 file = st.file_uploader("Upload CSV")
@@ -70,18 +113,27 @@ selected = None
 if file:
     df = pd.read_csv(file)
 
-    supabase.table("datasets").insert({
-        "name": file.name,
-        "data": df.to_dict(orient="records")
-    }).execute()
+    st.dataframe(df.head())
 
-    st.success("Saved ✔")
+    try:
+        supabase.table("datasets").insert({
+            "name": file.name,
+            "data": df.to_dict(orient="records")
+        }).execute()
+
+        st.success("✔ Saved to cloud")
+
+    except Exception as e:
+        st.error(f"Upload error: {e}")
 
 # ---------------- LOAD DATASETS ----------------
 st.subheader("📂 Cloud Datasets")
 
-res = supabase.table("datasets").select("*").execute()
-datasets = res.data or []
+try:
+    res = supabase.table("datasets").select("*").execute()
+    datasets = res.data or []
+except Exception:
+    datasets = []
 
 if datasets:
     names = [d["name"] for d in datasets]
@@ -92,5 +144,48 @@ if datasets:
 
     st.dataframe(df)
 
+    # ---------------- CHART ----------------
+    st.subheader("📊 Visualization")
+
+    x = st.selectbox("X axis", df.columns)
+    y = st.selectbox("Y axis", df.columns)
+
+    fig = px.bar(df, x=x, y=y)
+    st.plotly_chart(fig)
+
 else:
     st.warning("No datasets found")
+
+# ---------------- AI CHAT ----------------
+st.subheader("💬 AI Data Analyst")
+
+question = st.text_input("Ask a question")
+
+if question and df is not None:
+    with st.spinner("Thinking... 🤖"):
+        answer = ask_ai(question, df)
+
+    st.success("AI Response")
+    st.write(answer)
+
+    try:
+        supabase.table("chats").insert({
+            "question": question,
+            "answer": answer,
+            "dataset_name": selected or "unknown"
+        }).execute()
+    except:
+        pass
+
+# ---------------- CHAT HISTORY ----------------
+st.subheader("📜 Chat History")
+
+try:
+    history = supabase.table("chats").select("*").execute().data or []
+
+    for h in reversed(history[-10:]):
+        st.markdown(f"**Q:** {h['question']}")
+        st.markdown(f"**A:** {h['answer']}")
+        st.divider()
+except:
+    st.info("No chat history yet")
