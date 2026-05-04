@@ -105,7 +105,9 @@ file = st.file_uploader("Upload CSV")
 if file:
     try:
         df_upload = pd.read_csv(file)
-        # FIX 4: Store user_id so each user only sees their own datasets
+        # FIX: Replace NaN/Inf values before JSON serialization — Supabase (JSON) doesn't support them
+        df_upload = df_upload.where(pd.notnull(df_upload), None)  # NaN → None (becomes JSON null)
+        df_upload = df_upload.replace([float("inf"), float("-inf")], None)  # Inf → None
         supabase.table("datasets").insert({
             "name": file.name,
             "data": df_upload.to_dict(orient="records"),
@@ -212,7 +214,6 @@ try:
         supabase.table("chats")
         .select("*")
         .eq("user_id", user_id)
-        .order("created_at", desc=True)
         .limit(10)
         .execute()
         .data or []
