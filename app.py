@@ -12,9 +12,10 @@ from openai import OpenAI
 st.set_page_config(page_title="AI SaaS Dashboard", layout="wide", page_icon="🚀")
 
 # ---------------- LOAD STYLES ----------------
-def load_css(path: str) -> None:
-    """Read a .css file and inject it into the Streamlit app."""
-    css = pathlib.Path(path).read_text()
+def load_css(filename: str) -> None:
+    """Read a .css file (relative to this script) and inject it into the Streamlit app."""
+    css_path = pathlib.Path(__file__).parent / filename
+    css = css_path.read_text()
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 load_css("styles.css")
