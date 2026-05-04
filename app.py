@@ -102,9 +102,27 @@ Question:
 
     return response.choices[0].message.content
 
-# ---------------- UPLOAD DATA ----------------
 st.subheader("📂 Cloud Datasets")
 
+# ---------------- UPLOAD ----------------
+file = st.file_uploader("Upload CSV")
+
+if file:
+    df_upload = pd.read_csv(file)
+
+    try:
+        supabase.table("datasets").insert({
+            "name": file.name,
+            "data": df_upload.to_dict(orient="records")
+        }).execute()
+
+        st.success("✔ Uploaded successfully")
+        st.rerun()
+
+    except Exception as e:
+        st.error(f"Upload error: {e}")
+
+# ---------------- REFRESH DATA ----------------
 try:
     res = supabase.table("datasets").select("*").execute()
     datasets = res.data or []
@@ -123,7 +141,7 @@ if datasets:
 
     st.dataframe(df)
 
-    # ---------------- DELETE BUTTON ----------------
+    # ---------------- DELETE ----------------
     if st.button("🗑 Delete Dataset"):
         try:
             supabase.table("datasets") \
@@ -131,12 +149,24 @@ if datasets:
                 .eq("name", selected) \
                 .execute()
 
-            st.success(f"Deleted {selected} ✔")
+            st.success("Deleted ✔")
             st.rerun()
 
         except Exception as e:
             st.error(f"Delete failed: {e}")
 
+    # ---------------- CHART ----------------
+    st.subheader("📊 Visualization")
+
+    if df is not None and not df.empty:
+        x = st.selectbox("X axis", df.columns, key="x_axis")
+        y = st.selectbox("Y axis", df.columns, key="y_axis")
+
+        fig = px.bar(df, x=x, y=y)
+        st.plotly_chart(fig)
+
+else:
+    st.warning("No datasets found")
     # ---------------- CHART ----------------
     st.subheader("📊 Visualization")
 
