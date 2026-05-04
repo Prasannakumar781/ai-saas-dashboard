@@ -18,7 +18,7 @@ def load_css(filename: str) -> None:
     css = css_path.read_text()
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
-load_css("Styles.css")
+load_css("styles.css")
 
 st.title("🚀 AI SaaS Dashboard")
 
@@ -175,7 +175,11 @@ st.markdown('<div class="section-header"><span>📂</span><h2 style="margin:0">C
 
 file = st.file_uploader("Upload CSV", type=["csv"])
 
-if file:
+# Track uploaded filenames in session so we never double-insert on rerun
+if "uploaded_files" not in st.session_state:
+    st.session_state.uploaded_files = set()
+
+if file and file.name not in st.session_state.uploaded_files:
     try:
         df_upload = pd.read_csv(file)
         records = sanitize_records(df_upload.to_dict(orient="records"))
@@ -184,6 +188,7 @@ if file:
             "data": records,
             "user_id": user_id
         }).execute()
+        st.session_state.uploaded_files.add(file.name)
         st.success("✅ Uploaded successfully")
         st.rerun()
     except Exception as e:
