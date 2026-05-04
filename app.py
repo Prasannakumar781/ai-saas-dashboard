@@ -1,47 +1,37 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import json
-import os
-
-from dotenv import load_dotenv
 from supabase import create_client
 from openai import OpenAI
 
-
 # ---------------- SETUP ----------------
 st.set_page_config(page_title="AI SaaS Dashboard", layout="wide")
-st.title("🚀 AI SaaS Dashboard (GPT + Supabase)")
+st.title("🚀 AI SaaS Dashboard")
 
-load_dotenv()
-
-# ---------------- SUPABASE ----------------
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("❌ Supabase credentials missing in .env")
-    st.stop()
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-st.sidebar.title("🔐 Account")
+client = OpenAI(api_key=OPENAI_API_KEY)
 
+# ---------------- SESSION ----------------
 if "user" not in st.session_state:
     st.session_state.user = None
 
-email = ""
-password = ""
-login = False
-signup = False
+st.sidebar.title("🔐 Account")
 
-# ---------------- NOT LOGGED IN ----------------
-if st.session_state.user is None:
-
+# ================= AUTH =================
+def login_page():
     email = st.sidebar.text_input("Email")
     password = st.sidebar.text_input("Password", type="password")
 
     login = st.sidebar.button("Login")
     signup = st.sidebar.button("Sign Up")
+
+    if signup:
+        supabase.auth.sign_up({"email": email, "password": password})
+        st.info("Check email to confirm account")
 
     if login:
         res = supabase.auth.sign_in_with_password({
@@ -53,105 +43,47 @@ if st.session_state.user is None:
             st.session_state.user = res.user
             st.rerun()
 
-    if signup:
-        supabase.auth.sign_up({
-            "email": email,
-            "password": password
-        })
-
-        st.success("Signup success ✔")
-
-# ---------------- LOGGED IN ----------------
-else:
-    st.sidebar.success(f"Logged in as {st.session_state.user.email}")
-
-    if st.sidebar.button("Logout"):
-        st.session_state.user = None
-        st.rerun()
-
-if login:
-    try:
-        res = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
-
-        if res and res.user:
-            st.session_state.user = res.user
-            st.success(f"Welcome {res.user.email} ✔")
-        else:
-            st.error("Login failed: Invalid credentials")
-
-    except Exception as e:
-        st.error(f"Login error: {e}")
-if signup:
-    try:
-        res = supabase.auth.sign_up({
-            "email": email,
-            "password": password
-        })
-
-        st.success("Signup success ✔ Check Supabase users table")
-
-    except Exception as e:
-        st.error(f"Signup failed: {e}")
-
-# ---------------- OPENAI ----------------
-api_key = os.getenv("OPENAI_API_KEY")
-
-if not api_key:
-    st.error("❌ OPENAI_API_KEY missing in .env")
+    st.warning("Please login to continue")
     st.stop()
 
-client = OpenAI(api_key=api_key)
 
-def ask_ai(question, df):
-    sample = df.head(20).to_string()
+# 🔴 FORCE LOGIN FIRST (CRITICAL)
+if st.session_state.user is None:
+    login_page()
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a senior data analyst."},
-            {"role": "user", "content": f"""
-Dataset:
-{sample}
+# ================= LOGGED IN AREA =================
+st.sidebar.success(f"Logged in as {st.session_state.user.email}")
 
-Question:
-{question}
-"""}
-        ]
-    )
+if st.sidebar.button("Logout"):
+    st.session_state.user = None
+    st.rerun()
 
-    return response.choices[0].message.content
+# ================= EVERYTHING BELOW IS PROTECTED =================
 
-# ---------------- UPLOAD ----------------
 st.subheader("📁 Upload Dataset")
 
 file = st.file_uploader("Upload CSV")
 
 df = None
+selected = None
 
 if file:
     df = pd.read_csv(file)
 
-    st.dataframe(df.head())
-
     supabase.table("datasets").insert({
         "name": file.name,
-        "data": json.loads(df.to_json(orient="records"))
+        "data": df.to_dict(orient="records")
     }).execute()
 
-    st.success("✔ Saved to cloud")
+    st.success("Saved ✔")
 
 # ---------------- LOAD DATASETS ----------------
+st.subheader("📂 Cloud Datasets")
+
 res = supabase.table("datasets").select("*").execute()
 datasets = res.data or []
 
-df = None
-
 if datasets:
-    st.subheader("📂 Cloud Datasets")
-
     names = [d["name"] for d in datasets]
     selected = st.selectbox("Choose dataset", names)
 
@@ -160,46 +92,5 @@ if datasets:
 
     st.dataframe(df)
 
-    # ---------------- CHART ----------------
-    st.subheader("📊 Visualization")
-
-    cols = df.columns.tolist()
-
-    x = st.selectbox("X axis", cols)
-    y = st.selectbox("Y axis", cols)
-
-    fig = px.bar(df, x=x, y=y)
-    st.plotly_chart(fig)
-
 else:
-    st.warning("Upload dataset first")
-
-# ---------------- GPT CHAT ----------------
-st.subheader("💬 AI Data Analyst")
-
-question = st.text_input("Ask a question about your data")
-
-if question:
-    if df is None:
-        st.warning("No dataset loaded")
-    else:
-        with st.spinner("Thinking like a data analyst... 🤖"):
-            answer = ask_ai(question, df)
-
-        st.success("AI Response")
-        st.write(answer)
-
-        # OPTIONAL: save chat to Supabase (SAAS FEATURE)
-        supabase.table("chats").insert({
-            "question": question,
-            "answer": answer,
-            "dataset_name": selected if "selected" in locals() else "unknown"
-        }).execute()
-st.subheader("📜 Chat History")
-
-history = supabase.table("chats").select("*").execute().data or []
-
-for h in reversed(history[-10:]):
-    st.markdown(f"**Q:** {h['question']}")
-    st.markdown(f"**A:** {h['answer']}")
-    st.divider()
+    st.warning("No datasets found")
