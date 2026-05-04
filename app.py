@@ -164,7 +164,7 @@ if datasets:
         fig = px.bar(df, x=x, y=y)
         st.plotly_chart(fig)
     else:
-    st.warning("No datasets found")
+        st.warning("No datasets found")
     # ---------------- CHART ----------------
     st.subheader("📊 Visualization")
 
@@ -175,7 +175,7 @@ if datasets:
         fig = px.bar(df, x=x, y=y)
         st.plotly_chart(fig)
     else:
-    st.warning("No datasets found")
+        st.warning("No datasets found")
 # ---------------- AI CHAT ----------------
 st.subheader("💬 AI Data Analyst")
 
