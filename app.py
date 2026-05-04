@@ -103,37 +103,38 @@ Question:
     return response.choices[0].message.content
 
 st.subheader("📂 Cloud Datasets")
-# ---------------- UPLOAD ----------------
+
 file = st.file_uploader("Upload CSV")
 
+# ---------------- UPLOAD ----------------
 if file:
     df_upload = pd.read_csv(file)
 
-    try:
-        supabase.table("datasets").insert({
-            "name": file.name,
-            "data": df_upload.to_dict(orient="records")
-        }).execute()
+    supabase.table("datasets").insert({
+        "name": file.name,
+        "data": df_upload.to_dict(orient="records")
+    }).execute()
 
-        st.success("✔ Uploaded successfully")
-        st.rerun()
+    st.success("✔ Uploaded")
+    st.rerun()
 
-    except Exception as e:
-        st.error(f"Upload error: {e}")
+# ---------------- ALWAYS FRESH FETCH ----------------
+def load_datasets():
+    return supabase.table("datasets").select("*").execute().data or []
 
-# ---------------- REFRESH DATA ----------------
-try:
-    res = supabase.table("datasets").select("*").execute()
-    datasets = res.data or []
-except Exception:
-    datasets = []
+datasets = load_datasets()
 
 df = None
 selected = None
 
 if datasets:
     names = [d["name"] for d in datasets]
-    selected = st.selectbox("Choose dataset", names)
+
+    selected = st.selectbox(
+        "Choose dataset",
+        names,
+        key="dataset_selector"
+    )
 
     data = next(d for d in datasets if d["name"] == selected)
     df = pd.DataFrame(data["data"])
@@ -141,19 +142,26 @@ if datasets:
     st.dataframe(df)
 
     # ---------------- DELETE ----------------
-    if st.button("🗑 Delete Dataset"):
-        try:
-            supabase.table("datasets") \
-                .delete() \
-                .eq("name", selected) \
-                .execute()
+    if st.button("🗑 Delete Dataset", key="delete_btn"):
+        supabase.table("datasets") \
+            .delete() \
+            .eq("name", selected) \
+            .execute()
 
-            st.success("Deleted ✔")
-            st.rerun()
+        st.success("Deleted ✔")
+        st.rerun()
 
-        except Exception as e:
-            st.error(f"Delete failed: {e}")
+    # ---------------- CHART ----------------
+    st.subheader("📊 Visualization")
 
+    if df is not None and not df.empty:
+        x = st.selectbox("X axis", df.columns, key="x_axis")
+        y = st.selectbox("Y axis", df.columns, key="y_axis")
+
+        fig = px.bar(df, x=x, y=y)
+        st.plotly_chart(fig)
+    else:
+        st.warning("No datasets found")
     # ---------------- CHART ----------------
     st.subheader("📊 Visualization")
 
