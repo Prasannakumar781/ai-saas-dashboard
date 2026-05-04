@@ -1,0 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Gradient background */
+.stApp {
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: #f0f0f0;
+}
+
+/* Title */
+h1 {
+    font-family: 'Syne', sans-serif !important;
+    font-size: 2.8rem !important;
+    background: linear-gradient(90deg, #f953c6, #b91d73, #f9a825, #43e97b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -1px;
+}
+
+h2, h3 {
+    font-family: 'Syne', sans-serif !important;
+    color: #e0c3fc !important;
+}
+
+/* Cards / containers */
+[data-testid="stVerticalBlock"] > div {
+    border-radius: 16px;
+}
+
+/* Metric boxes */
+[data-testid="metric-container"] {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 16px;
+    backdrop-filter: blur(10px);
+}
+
+/* Buttons */
+.stButton > button {
+    background: linear-gradient(135deg, #f953c6, #b91d73);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(249,83,198,0.4);
+}
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(249,83,198,0.6);
+}
+
+/* Delete button — red variant */
+.stButton > button[kind="secondary"] {
+    background: linear-gradient(135deg, #f5576c, #f093fb);
+    box-shadow: 0 4px 20px rgba(245,87,108,0.4);
+}
+
+/* Selectbox, text_input */
+.stSelectbox > div > div,
+.stTextInput > div > div > input {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 10px !important;
+    color: #f0f0f0 !important;
+}
+
+/* File uploader */
+[data-testid="stFileUploader"] {
+    background: rgba(255,255,255,0.05);
+    border: 2px dashed rgba(249,83,198,0.5);
+    border-radius: 14px;
+    padding: 1rem;
+}
+
+/* Dataframe */
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #1a1a2e, #16213e);
+    border-right: 1px solid rgba(255,255,255,0.08);
+}
+[data-testid="stSidebar"] * {
+    color: #d0d0f0 !important;
+}
+
+/* Divider */
+hr {
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* Chat bubbles */
+.chat-q {
+    background: linear-gradient(135deg, rgba(249,83,198,0.2), rgba(185,29,115,0.15));
+    border-left: 4px solid #f953c6;
+    border-radius: 0 12px 12px 0;
+    padding: 12px 16px;
+    margin: 8px 0;
+}
+.chat-a {
+    background: linear-gradient(135deg, rgba(67,233,123,0.1), rgba(56,249,215,0.08));
+    border-left: 4px solid #43e97b;
+    border-radius: 0 12px 12px 0;
+    padding: 12px 16px;
+    margin: 8px 0;
+}
+
+/* Success / info / warning overrides */
+.stSuccess, .stInfo, .stWarning, .stError {
+    border-radius: 12px !important;
+}
+
+/* Radio buttons */
+.stRadio > div {
+    gap: 12px;
+}
+.stRadio label {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 4px 16px;
+    transition: all 0.2s;
+}
+.stRadio label:hover {
+    background: rgba(249,83,198,0.2);
+    border-color: #f953c6;
+}
+
+/* Section headers */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 28px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
