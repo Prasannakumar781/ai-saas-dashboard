@@ -103,30 +103,6 @@ Question:
     return response.choices[0].message.content
 
 # ---------------- UPLOAD DATA ----------------
-st.subheader("📁 Upload Dataset")
-
-file = st.file_uploader("Upload CSV")
-
-df = None
-selected = None
-
-if file:
-    df = pd.read_csv(file)
-
-    st.dataframe(df.head())
-
-    try:
-        supabase.table("datasets").insert({
-            "name": file.name,
-            "data": df.to_dict(orient="records")
-        }).execute()
-
-        st.success("✔ Saved to cloud")
-
-    except Exception as e:
-        st.error(f"Upload error: {e}")
-
-# ---------------- LOAD DATASETS ----------------
 st.subheader("📂 Cloud Datasets")
 
 try:
@@ -134,6 +110,9 @@ try:
     datasets = res.data or []
 except Exception:
     datasets = []
+
+df = None
+selected = None
 
 if datasets:
     names = [d["name"] for d in datasets]
@@ -144,18 +123,32 @@ if datasets:
 
     st.dataframe(df)
 
+    # ---------------- DELETE BUTTON ----------------
+    if st.button("🗑 Delete Dataset"):
+        try:
+            supabase.table("datasets") \
+                .delete() \
+                .eq("name", selected) \
+                .execute()
+
+            st.success(f"Deleted {selected} ✔")
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"Delete failed: {e}")
+
     # ---------------- CHART ----------------
     st.subheader("📊 Visualization")
 
-    x = st.selectbox("X axis", df.columns)
-    y = st.selectbox("Y axis", df.columns)
+    if not df.empty:
+        x = st.selectbox("X axis", df.columns)
+        y = st.selectbox("Y axis", df.columns)
 
-    fig = px.bar(df, x=x, y=y)
-    st.plotly_chart(fig)
+        fig = px.bar(df, x=x, y=y)
+        st.plotly_chart(fig)
 
 else:
     st.warning("No datasets found")
-
 # ---------------- AI CHAT ----------------
 st.subheader("💬 AI Data Analyst")
 
