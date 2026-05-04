@@ -18,7 +18,7 @@ def load_css(filename: str) -> None:
     css = css_path.read_text()
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
-load_css("styles.css")
+load_css("Styles.css")
 
 st.title("🚀 AI SaaS Dashboard")
 
