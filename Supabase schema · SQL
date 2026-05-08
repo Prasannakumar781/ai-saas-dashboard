@@ -1,0 +1,35 @@
+-- Run these in your Supabase SQL Editor (https://app.supabase.com → SQL Editor)
+
+-- 1. datasets table
+create table if not exists public.datasets (
+    id          uuid primary key default gen_random_uuid(),
+    created_at  timestamptz default now(),
+    name        text not null,
+    data        jsonb not null,
+    user_id     uuid references auth.users(id) on delete cascade not null
+);
+
+-- Enable Row Level Security
+alter table public.datasets enable row level security;
+
+-- Users can only see/modify their own datasets
+create policy "datasets: owner access" on public.datasets
+    using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+
+
+-- 2. chats table
+create table if not exists public.chats (
+    id            uuid primary key default gen_random_uuid(),
+    created_at    timestamptz default now(),
+    question      text not null,
+    answer        text not null,
+    dataset_name  text not null,
+    user_id       uuid references auth.users(id) on delete cascade not null
+);
+
+alter table public.chats enable row level security;
+
+create policy "chats: owner access" on public.chats
+    using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
