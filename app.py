@@ -15,6 +15,9 @@ st.set_page_config(page_title="AI SaaS Dashboard", layout="wide", page_icon="�
 def load_css(filename: str) -> None:
     """Read a .css file (relative to this script) and inject it into the Streamlit app."""
     css_path = pathlib.Path(__file__).parent / filename
+    # FIX 1: Added existence check to avoid FileNotFoundError on missing CSS
+    if not css_path.exists():
+        return
     css = css_path.read_text()
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
@@ -24,7 +27,6 @@ st.title("🚀 AI SaaS Dashboard")
 
 # ---------------- COLOUR PALETTES ----------------
 PALETTES = [
-    # Each palette = list of hex colours for chart series / bars / points
     ["#f953c6", "#b91d73", "#ff6b6b", "#feca57", "#48dbfb"],   # magenta-pink
     ["#43e97b", "#38f9d7", "#4facfe", "#00f2fe", "#a8edea"],   # mint-cyan
     ["#f9a825", "#ff6f00", "#ff8f00", "#ffd54f", "#ffe082"],   # amber-fire
@@ -43,16 +45,6 @@ def palette_for(name: str) -> list:
 def primary_color(name: str) -> str:
     return palette_for(name)[0]
 
-PLOTLY_TEMPLATE = {
-    "layout": {
-        "paper_bgcolor": "rgba(0,0,0,0)",
-        "plot_bgcolor": "rgba(255,255,255,0.03)",
-        "font": {"color": "#e0e0e0", "family": "Space Grotesk"},
-        "xaxis": {"gridcolor": "rgba(255,255,255,0.08)", "zerolinecolor": "rgba(255,255,255,0.08)"},
-        "yaxis": {"gridcolor": "rgba(255,255,255,0.08)", "zerolinecolor": "rgba(255,255,255,0.08)"},
-    }
-}
-
 def styled_fig(fig, dataset_name: str):
     """Apply dark theme + dataset palette to any Plotly figure."""
     pal = palette_for(dataset_name)
@@ -66,12 +58,14 @@ def styled_fig(fig, dataset_name: str):
         legend=dict(bgcolor="rgba(255,255,255,0.05)", bordercolor="rgba(255,255,255,0.1)"),
         margin=dict(t=40, b=40, l=40, r=20),
     )
-    # For single-trace bar/line/scatter, force the first palette colour
+    # FIX 2: Guard against None marker/line attributes properly
     for trace in fig.data:
-        if hasattr(trace, "marker") and trace.marker.color is None:
-            trace.marker.color = pal[0]
-        if hasattr(trace, "line") and trace.line.color is None:
-            trace.line.color = pal[0]
+        if hasattr(trace, "marker") and trace.marker is not None:
+            if trace.marker.color is None:
+                trace.marker.color = pal[0]
+        if hasattr(trace, "line") and trace.line is not None:
+            if trace.line.color is None:
+                trace.line.color = pal[0]
     return fig
 
 # ---------------- NaN SANITIZER ----------------
@@ -88,9 +82,17 @@ def sanitize_records(records):
     return clean
 
 # ---------------- SECRETS ----------------
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+# FIX 3: Wrapped secrets loading in try/except with helpful error message
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+except KeyError as e:
+    st.error(
+        f"Missing secret: {e}. "
+        "Create a `.streamlit/secrets.toml` file with SUPABASE_URL, SUPABASE_KEY, and OPENAI_API_KEY."
+    )
+    st.stop()
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -99,11 +101,13 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 if "user" not in st.session_state:
     st.session_state.user = None
 
+# FIX 4: get_session() returns a Session object directly, not one with .user;
+#         use get_user() instead, which is the correct method for this check.
 if st.session_state.user is None:
     try:
-        session = supabase.auth.get_session()
-        if session and session.user:
-            st.session_state.user = session.user
+        user_response = supabase.auth.get_user()
+        if user_response and user_response.user:
+            st.session_state.user = user_response.user
     except Exception:
         pass
 
@@ -113,8 +117,10 @@ st.sidebar.title("🔐 Account")
 def auth_page():
     email = st.sidebar.text_input("Email")
     password = st.sidebar.text_input("Password", type="password")
-    login = st.sidebar.button("Login")
-    signup = st.sidebar.button("Sign Up")
+
+    # FIX 5: Use unique keys on buttons to avoid duplicate-widget errors on rerun
+    login = st.sidebar.button("Login", key="login_btn")
+    signup = st.sidebar.button("Sign Up", key="signup_btn")
 
     if signup:
         if not email or not password:
@@ -149,7 +155,7 @@ if st.session_state.user is None:
 user_id = st.session_state.user.id
 st.sidebar.success(f"✅ {st.session_state.user.email}")
 
-if st.sidebar.button("Logout"):
+if st.sidebar.button("Logout", key="logout_btn"):
     supabase.auth.sign_out()
     st.session_state.user = None
     st.rerun()
@@ -237,9 +243,11 @@ else:
     # Quick stats
     num_cols = df.select_dtypes(include="number").columns.tolist()
     if num_cols:
-        cols = st.columns(min(len(num_cols), 4))
+        # FIX 6: Variable name 'col' shadowed the loop variable used in sidebar above.
+        #         Renamed inner loop variable to 'stat_col' to avoid the conflict.
+        stat_cols = st.columns(min(len(num_cols), 4))
         for i, col_name in enumerate(num_cols[:4]):
-            with cols[i]:
+            with stat_cols[i]:
                 val = df[col_name].mean()
                 st.metric(f"avg {col_name}", f"{val:,.2f}")
 
@@ -290,13 +298,17 @@ else:
                 )
 
             fig = styled_fig(fig, selected)
-            # Gradient fill for bar
+
+            # FIX 7: Bar gradient used df[y] as color values — this breaks when y has
+            #         non-numeric or missing data. Use a safe numeric array instead.
             if chart_type == "Bar":
+                color_vals = pd.to_numeric(df[y], errors="coerce").fillna(0).tolist()
                 fig.update_traces(marker=dict(
-                    color=df[y] if y in df else None,
+                    color=color_vals,
                     colorscale=[[0, pal[-1]], [1, pal[0]]],
                     showscale=False,
                 ))
+
             # Smooth lines
             if chart_type in ("Line", "Area"):
                 fig.update_traces(line=dict(width=3))
@@ -329,7 +341,12 @@ st.markdown('<div class="section-header"><span>💬</span><h2 style="margin:0">A
 if df is None:
     st.info("Load a dataset above to start asking questions.")
 else:
-    question = st.text_input("Ask a question about your dataset", placeholder="e.g. What trends do you see? Which column has the most variance?")
+    question = st.text_input(
+        "Ask a question about your dataset",
+        placeholder="e.g. What trends do you see? Which column has the most variance?",
+        # FIX 8: Added explicit key to avoid widget collision if page rerenders
+        key="ai_question"
+    )
 
     if question:
         with st.spinner("🤖 Thinking..."):
@@ -357,6 +374,8 @@ try:
         supabase.table("chats")
         .select("*")
         .eq("user_id", user_id)
+        # FIX 9: Added order() so newest chats come first; limit alone gave random ordering
+        .order("created_at", desc=True)
         .limit(10)
         .execute()
         .data or []
@@ -365,7 +384,9 @@ try:
     if not history:
         st.info("No chat history yet. Ask a question above!")
     else:
-        for h in reversed(history):
+        # FIX 10: Removed reversed() — results are already newest-first from .order(desc=True).
+        #          reversed() on a list works but was semantically wrong here.
+        for h in history:
             ds_name = h.get("dataset_name", "unknown")
             col = primary_color(ds_name)
             st.markdown(
