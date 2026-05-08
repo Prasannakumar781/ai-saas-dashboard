@@ -19,10 +19,19 @@ h1 {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
-
 h2, h3 {
     font-family: 'Syne', sans-serif !important;
     color: #e0c3fc !important;
+}
+
+/* ---------------- SECTION HEADERS ---------------- */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 2rem 0 1rem 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
 /* ---------------- CARDS ---------------- */
@@ -50,7 +59,6 @@ div[data-testid="stVerticalBlock"] {
     box-shadow: 0 4px 20px rgba(249,83,198,0.35);
     transition: all 0.3s ease;
 }
-
 .stButton > button:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 30px rgba(249,83,198,0.6);
@@ -60,7 +68,6 @@ div[data-testid="stVerticalBlock"] {
 .stSelectbox, .stTextInput {
     border-radius: 10px;
 }
-
 .stTextInput input {
     background: rgba(255,255,255,0.08) !important;
     border: 1px solid rgba(255,255,255,0.2) !important;
@@ -86,7 +93,6 @@ div[data-testid="stVerticalBlock"] {
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #1a1a2e, #16213e);
 }
-
 section[data-testid="stSidebar"] * {
     color: #d0d0f0 !important;
 }
@@ -99,7 +105,6 @@ section[data-testid="stSidebar"] * {
     padding: 12px;
     margin: 6px 0;
 }
-
 .chat-a {
     background: rgba(67,233,123,0.12);
     border-left: 4px solid #43e97b;
